@@ -15,18 +15,15 @@ ITERATION_COUNT = 10
 
 def main():
 	data = readData()
-	# 10 times with information gain formula
 	decision_trees_with_information_gain = []
-	for i in range(ITERATION_COUNT):
-		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
-		decision_tree = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
-		decision_trees_with_information_gain.append(decision_tree)
-	# 10 times with gini impurity formula
 	decision_trees_with_gini_impurity = []
+	# 10 times with information gain formula and gini impurity formula
 	for i in range(ITERATION_COUNT):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
-		decision_tree = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
-		decision_trees_with_gini_impurity.append(decision_tree)
+		decision_tree_with_information_gain = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
+		decision_trees_with_information_gain.append(decision_tree_with_information_gain)
+		decision_tree_with_gini_impurity = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
+		decision_trees_with_gini_impurity.append(decision_tree_with_gini_impurity)
 	# report the results
 	OutputUtility.reportLossInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
 	OutputUtility.reportMeanAndVariancesOfLosses(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
