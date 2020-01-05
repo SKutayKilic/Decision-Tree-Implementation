@@ -2,27 +2,26 @@
 # Project 3
 # Seyfi Kutay Kılıç
 
+import collections
 import random
 import math
 
 DATA_FILE = "iris.data"
-ENTROPY_LOSS_TRESHOLD = 0.2
 
 def main():
 	data = readData()
 	# 10 times with information gain technique
-	decision_tree_evaluator = DecisionTreeEvaluator()
 	for i in range(10):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree = DecisionTree(training_data, validation_data, computeEntropyWithInformationGainFormula)
-		decision_tree_evaluator.computeErrors(decision_tree, test_data)
+		print(DecisionTreeEvaluator.computeErrorRate(decision_tree, test_data))
 
 def readData():
 	data = []
 	with open(DATA_FILE, "r") as f:
 		for line in f.read().splitlines():
 			row = line.split(',')
-			data.append(DataRow([float(num) for num in row[:-1]], row[-1]))
+			data.append(Datum([float(num) for num in row[:-1]], row[-1]))
 	return data
 
 def shuffleAndSplitToTrainingValidationTest(data):
@@ -34,7 +33,7 @@ def shuffleAndSplitToTrainingValidationTest(data):
 	return (training_data, validation_data, test_data)
 
 def computeEntropyWithInformationGainFormula(data):
-	classes = [row.classs for row in data]
+	classes = [datum.classs for datum in data]
 	class_set = set(classes)
 	if len(class_set) < 2:
 		return 0
@@ -47,50 +46,58 @@ def computeEntropyWithInformationGainFormula(data):
 
 class DecisionTree:
 	def __init__(self, training_data, validation_data, entropy_calculator_function):
+		self.training_data = training_data
+		self.validation_data = validation_data
 		self.entropy_calculator_function = entropy_calculator_function
-		self.root = self.generateTree(training_data[:], validation_data[:])
+		self.root = DecisionTreeNode(training_data[:])
+		self.buildTree()
 
-	# TODO: handle 0 size training data or validation data case
-	def generateTree(self, training_data, validation_data):
-		root = DecisionTreeNode()
-		training_entropy = self.entropy_calculator_function(training_data)
-		validation_entropy = self.entropy_calculator_function(validation_data)
-		split_param, split_point = self.findBestSplit(training_data)
-		training_left_data, training_right_data, training_entropy_after_split = self.splitWithParamAndPoint(training_data, split_param, split_point)
-		validation_left_data, validation_right_data, validation_entropy_after_split = self.splitWithParamAndPoint(validation_data, split_param, split_point)
-		entropy_loss_of_validation_data = validation_entropy - validation_entropy_after_split
-		if entropy_loss_of_validation_data < ENTROPY_LOSS_TRESHOLD: # This node must be a leaf node
-			root.result_class = self.computeResultOfLeafNode(training_data)
-		else: # Continue to branching
-			root.split_param = split_param
-			root.split_point = split_point
-			root.left = self.generateTree(training_left_data, validation_left_data)
-			root.right = self.generateTree(training_right_data, validation_right_data)
-		return root
+	def buildTree(self):
+		current_error_rate = self.computeValidationError()
+		q = collections.deque()
+		q.append(self.root)
+		while q:
+			level_size = len(q)
+			for i in range(level_size):
+				node = q.popleft()
+				if node.isSuitableToSplit():
+					param_index, param_value = self.findBestSplit(node.data)
+					node.split_param_index, node.split_param_value = param_index, param_value
+					left_data, right_data = self.computeSplitWithAttributeAndValue(node.data, param_index, param_value)
+					node.left, node.right = DecisionTreeNode(left_data), DecisionTreeNode(right_data)
+					new_error_rate = self.computeValidationError()
+					if new_error_rate < current_error_rate: # We can hold the split
+						current_error_rate = new_error_rate
+						q.append(node.left)
+						q.append(node.right)
+					else: # The split is not rational because error rate has increased
+						node.left, node.right = None, None # Recover children
 
-	def findBestSplit(self, training_data):
+
+	def findBestSplit(self, data):
+		#print([vars(datum) for datum in data])
 		best_entropy = 999
-		best_param = None
-		best_point = None
-		for param_index in range(len(training_data[0].params)):
-			for row in training_data:
-				left_data, right_data, entropy = self.splitWithParamAndPoint(training_data, param_index, row.params[param_index])
+		best_param_index = None
+		best_param_value = None
+		for param_index in range(len(data[0].params)):
+			for datum in data:
+				left_data, right_data = self.computeSplitWithAttributeAndValue(data, param_index, datum.params[param_index])
+				entropy = self.computeEntropyAfterSplitting(left_data, right_data)
 				if entropy < best_entropy:
 					best_entropy = entropy
-					best_param = param_index
-					best_point = row.params[param_index]
-		return (best_param, best_point)
+					best_param_index = param_index
+					best_param_value = datum.params[param_index]
+		return (best_param_index, best_param_value)
 
-	def splitWithParamAndPoint(self, data, param_index, param_point):
+	def computeSplitWithAttributeAndValue(self, data, param_index, param_value):
 		left_data = []
 		right_data = []
-		for row in data:
-			if row.params[param_index] < param_point:
-				left_data.append(row)
+		for datum in data:
+			if datum.params[param_index] < param_value:
+				left_data.append(datum)
 			else:
-				right_data.append(row)
-		entropy_after_split = self.computeEntropyAfterSplitting(left_data, right_data)
-		return (left_data, right_data, entropy_after_split)
+				right_data.append(datum)
+		return (left_data, right_data)
 
 	def computeEntropyAfterSplitting(self, left_data, right_data):
 		left_entropy = self.entropy_calculator_function(left_data)
@@ -98,41 +105,52 @@ class DecisionTree:
 		total_size = len(left_data) + len(right_data)
 		return (len(left_data) * left_entropy + len(right_data) * right_entropy) / total_size
 
-	def computeResultOfLeafNode(self, data):
-		classes = [row.classs for row in data]
-		return max(set(classes), key = classes.count)
+	def computeValidationError(self):
+		return DecisionTreeEvaluator.computeErrorRate(self, self.validation_data)
+
 
 class DecisionTreeNode:
-	def __init__(self):
-		self.split_param = None
-		self.split_point = None 
+	def __init__(self, data):
+		self.data = data
+		self.pluratiy_class = self.findPluratiyClass()
 		self.left = None
 		self.right = None
-		self.result_class = None
+		self.split_param_index = None
+		self.split_param_value = None 
+		
+	def findPluratiyClass(self):
+		classes = [datum.classs for datum in self.data]
+		return max(set(classes), key = classes.count)
 
-class DataRow:
+	def isSuitableToSplit(self):
+		return len(self.data) > 2 and len(set([datum.classs for datum in self.data])) > 1
+
+
+class Datum:
 	def __init__(self, params, classs):
 		self.params = params
 		self.classs = classs
 
 class DecisionTreeEvaluator:
-	def computeErrors(self, decision_tree, test_data):
-		total_count = len(test_data)
+	@staticmethod
+	def computeErrorRate(decision_tree, data):
 		error_count = 0
-		for row in test_data:
-			actual_result = row.classs
-			predicted_result = self.predictResult(decision_tree, row.params)
+		for datum in data:
+			actual_result = datum.classs
+			predicted_result = DecisionTreeEvaluator.predictResult(decision_tree, datum.params)
 			if actual_result != predicted_result:
 				error_count += 1
-		print(f"{error_count} out of {total_count} rows")
+		return error_count / len(data)
 
-	def predictResult(self, decision_tree, params):
+	@staticmethod
+	def predictResult(decision_tree, params):
 		current_node = decision_tree.root
 		# while it is not a leaf
-		while current_node.result_class == None:
-			if params[current_node.split_param] < current_node.split_point:
+		while current_node.left is not None: # note that, if the left is null then right is also null and vice versa
+			if params[current_node.split_param_index] < current_node.split_param_value:
 				current_node = current_node.left
 			else:
 				current_node = current_node.right
-		return current_node.result_class
+		return current_node.pluratiy_class
+
 main()
