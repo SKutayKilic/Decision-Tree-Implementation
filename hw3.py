@@ -7,10 +7,8 @@ import random
 import math
 
 import matplotlib.pyplot as plt
-import os
 
 DATA_FILE = "iris.data"
-OUTPUT_FOLDER = "kutay_decision_tree_plots"
 
 def main():
 	data = readData()
@@ -20,27 +18,21 @@ def main():
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
 		decision_trees_with_information_gain.append(decision_tree)
-		#print(DecisionTreeEvaluator.computeErrorRate(decision_tree.root, test_data))
-		#print(decision_tree.training_loss_of_depths)
-		#print(decision_tree.validation_loss_of_depths)
 	# 10 times with information gini impurity formula
 	decision_trees_with_gini_impurity = []
-	for i in range(1):
+	for i in range(10):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
 		decision_trees_with_gini_impurity.append(decision_tree)
-		#print(DecisionTreeEvaluator.computeErrorRate(decision_tree.root, test_data))
-		#plt.scatter(list(range(len(decision_tree.validation_loss_of_depths))), decision_tree.validation_loss_of_depths)
-		#plt.ylabel('Validation Loss with respect to depths')
-		#plt.show()
-	plotResults(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
+	plotLossRates(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
 
 def readData():
 	data = []
 	with open(DATA_FILE, "r") as f:
 		for line in f.read().splitlines():
 			row = line.split(',')
-			data.append(Datum([float(num) for num in row[:-1]], row[-1]))
+			if len(row) > 1: # if not an empty line
+				data.append(Datum([float(num) for num in row[:-1]], row[-1]))
 	return data
 
 def shuffleAndSplitToTrainingValidationTest(data):
@@ -51,13 +43,35 @@ def shuffleAndSplitToTrainingValidationTest(data):
 	test_data = data[6*tenpercent_n : ]
 	return (training_data, validation_data, test_data)
 
-def plotResults(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
-	os.mkdir(OUTPUT_FOLDER)
+def plotLossRates(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
+	plt.title('Error Percentages')
+
+	plt.subplot(2, 2, 1)
+	plt.xlabel('Training Loss With Respect to Depth (Information Gain)')
+	for i in range(len(decision_trees_with_information_gain)):
+		decision_tree = decision_trees_with_information_gain[i]
+		plt.plot(decision_tree.training_loss_of_depths)
+
+	plt.subplot(2, 2, 2)
+	plt.xlabel('Training Loss With Respect to Depth (Gini Impurity)')
+	for i in range(len(decision_trees_with_gini_impurity)):
+		decision_tree = decision_trees_with_gini_impurity[i]
+		plt.plot(decision_tree.training_loss_of_depths)
+
+	plt.subplot(2, 2, 3)
+	plt.xlabel('Validation Loss With Respect to Depth (Information Gain)')
 	for i in range(len(decision_trees_with_information_gain)):
 		decision_tree = decision_trees_with_information_gain[i]
 		plt.plot(decision_tree.validation_loss_of_depths)
-		plt.title(f'Error percentages of iteration {i+1}')
-		plt.savefig(f'{OUTPUT_FOLDER}/plot{i}.png')
+
+	plt.subplot(2, 2, 4)
+	plt.xlabel('Validation Loss With Respect to Depth (Gini Impurity)')
+	for i in range(len(decision_trees_with_gini_impurity)):
+		decision_tree = decision_trees_with_gini_impurity[i]
+		plt.plot(decision_tree.validation_loss_of_depths)
+
+	plt.subplots_adjust(hspace=0.5)
+	plt.show()
 
 
 class DecisionTree:
