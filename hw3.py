@@ -10,10 +10,16 @@ DATA_FILE = "iris.data"
 
 def main():
 	data = readData()
-	# 10 times with information gain technique
+	# 10 times with information gain formula
 	for i in range(10):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
-		decision_tree = DecisionTree(training_data, validation_data, computeEntropyWithInformationGainFormula)
+		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
+		print(DecisionTreeEvaluator.computeErrorRate(decision_tree, test_data))
+	print("***")
+	# 10 times with information gini impurity formula
+	for i in range(10):
+		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
+		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
 		print(DecisionTreeEvaluator.computeErrorRate(decision_tree, test_data))
 
 def readData():
@@ -31,18 +37,6 @@ def shuffleAndSplitToTrainingValidationTest(data):
 	validation_data = data[2*tenpercent_n : 6*tenpercent_n]
 	test_data = data[6*tenpercent_n : ]
 	return (training_data, validation_data, test_data)
-
-def computeEntropyWithInformationGainFormula(data):
-	classes = [datum.classs for datum in data]
-	class_set = set(classes)
-	if len(class_set) < 2:
-		return 0
-	entropy = 0
-	for classs in class_set:
-		count = classes.count(classs)
-		proportion = count / len(data)
-		entropy -= proportion * math.log2(proportion)
-	return entropy
 
 class DecisionTree:
 	def __init__(self, training_data, validation_data, entropy_calculator_function):
@@ -152,5 +146,31 @@ class DecisionTreeEvaluator:
 			else:
 				current_node = current_node.right
 		return current_node.pluratiy_class
+
+class EntropyCalculator:
+	@staticmethod
+	def calculateEntropyWithInformationGainFormula(data):
+		classes = [datum.classs for datum in data]
+		class_set = set(classes)
+		if len(class_set) < 2:
+			return 0
+		entropy = 0
+		for classs in class_set:
+			proportion = classes.count(classs) / len(data)
+			entropy -= proportion * math.log2(proportion)
+		return entropy
+
+	@staticmethod
+	def calculateEntropyWithGiniImpurityFormula(data):
+		classes = [datum.classs for datum in data]
+		class_set = set(classes)
+		if len(class_set) < 2:
+			return 0
+		entropy = 1
+		for classs in class_set:
+			proportion = classes.count(classs) / len(data)
+			entropy -= proportion * proportion
+		return entropy
+
 
 main()
