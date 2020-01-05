@@ -2,13 +2,15 @@
 # Project 3 - Decision Tree Implementation
 # Seyfi Kutay Kılıç
 
+import sys
 import collections
 import random
 import math
 
+import statistics
 import matplotlib.pyplot as plt
 
-DATA_FILE = "iris.data"
+DATA_FILE = sys.argv[1]
 ITERATION_COUNT = 10
 
 def main():
@@ -26,6 +28,7 @@ def main():
 		decision_tree = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
 		decision_trees_with_gini_impurity.append(decision_tree)
 	OutputUtility.reportLossInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
+	OutputUtility.reportMeanAndVariancesOfLosses(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
 	OutputUtility.plotLossRates(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
 
 def readData():
@@ -193,18 +196,40 @@ class EntropyCalculator:
 class OutputUtility:
 	@staticmethod
 	def reportLossInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
-		for i in range(len(decision_trees_with_information_gain)):
-			decision_tree = decision_trees_with_information_gain[i]
-			loss_percantage = DecisionTreeEvaluator.computeErrorPercentage(decision_tree.root, decision_tree.test_data)
-			print(f"The loss percentage of information gain technique in iteration {i+1} is %{loss_percantage}")
-		for i in range(len(decision_trees_with_gini_impurity)):
-			decision_tree = decision_trees_with_gini_impurity[i]
-			loss_percantage = DecisionTreeEvaluator.computeErrorPercentage(decision_tree.root, decision_tree.test_data)
-			print(f"The loss percentage of gini impurity technique in iteration {i+1} is %{loss_percantage}")
+		information_gain_losses, gini_impurity_losses = OutputUtility.getLossPercentagesInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
+		for i in range(len(information_gain_losses)):
+			loss_percantage = information_gain_losses[i]
+			print(f"The loss percentage of information gain technique in iteration {i+1} is {loss_percantage}%")
+		for i in range(len(gini_impurity_losses)):
+			loss_percantage = gini_impurity_losses[i]
+			print(f"The loss percentage of gini impurity technique in iteration {i+1} is {loss_percantage}%")
 
 	@staticmethod
 	def reportMeanAndVariancesOfLosses(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
-		pass
+		information_gain_losses, gini_impurity_losses = OutputUtility.getLossPercentagesInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
+		information_gain_mean = statistics.mean(information_gain_losses)
+		information_gain_variance = statistics.variance(information_gain_losses)
+		gini_impurity_mean = statistics.mean(gini_impurity_losses)
+		gini_impurity_variance = statistics.variance(gini_impurity_losses)
+		print(f"The mean of the loss with using information gain is {information_gain_mean}%")
+		print(f"The mean of the loss with using gini impurity is {gini_impurity_mean}%")
+		print(f"The variance of the loss with using information gain is {information_gain_variance}%")
+		print(f"The variance of the loss with using gini impurity is {gini_impurity_variance}%")
+
+	# Helper method to get the loss rates of test data
+	@staticmethod 
+	def getLossPercentagesInTestSet(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
+		information_gain_losses = []
+		gini_impurity_losses = []
+		for i in range(len(decision_trees_with_information_gain)):
+			decision_tree = decision_trees_with_information_gain[i]
+			loss_percantage = DecisionTreeEvaluator.computeErrorPercentage(decision_tree.root, decision_tree.test_data)
+			information_gain_losses.append(loss_percantage)
+		for i in range(len(decision_trees_with_gini_impurity)):
+			decision_tree = decision_trees_with_gini_impurity[i]
+			loss_percantage = DecisionTreeEvaluator.computeErrorPercentage(decision_tree.root, decision_tree.test_data)
+			gini_impurity_losses.append(loss_percantage)
+		return (information_gain_losses, gini_impurity_losses)
 
 	@staticmethod
 	def plotLossRates(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
