@@ -22,8 +22,6 @@ def main():
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree_with_information_gain = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
 		decision_trees_with_information_gain.append(decision_tree_with_information_gain)
-	for i in range(ITERATION_COUNT):	
-		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree_with_gini_impurity = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
 		decision_trees_with_gini_impurity.append(decision_tree_with_gini_impurity)
 	# report the results
