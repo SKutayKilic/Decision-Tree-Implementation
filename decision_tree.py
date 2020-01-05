@@ -10,8 +10,8 @@ import math
 import statistics
 import matplotlib.pyplot as plt
 
-DATA_FILE = sys.argv[1]
-ITERATION_COUNT = 10
+DATA_FILE = sys.argv[1] # it should be taken as a command line parameter
+ITERATION_COUNT = 10 # 10 in default but you can change it to any positive integer
 
 def main():
 	data = readData()
@@ -22,6 +22,8 @@ def main():
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree_with_information_gain = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
 		decision_trees_with_information_gain.append(decision_tree_with_information_gain)
+	for i in range(ITERATION_COUNT):	
+		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree_with_gini_impurity = DecisionTree(training_data, validation_data, test_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
 		decision_trees_with_gini_impurity.append(decision_tree_with_gini_impurity)
 	# report the results
@@ -51,9 +53,9 @@ def shuffleAndSplitToTrainingValidationTest(data):
 
 class DecisionTree:
 	def __init__(self, training_data, validation_data, test_data, entropy_calculator_function):
-		self.training_data = training_data
-		self.validation_data = validation_data
-		self.test_data = test_data
+		self.training_data = training_data[:]
+		self.validation_data = validation_data[:]
+		self.test_data = test_data[:]
 		self.entropy_calculator_function = entropy_calculator_function
 
 		self.training_loss_of_depths = []
@@ -275,4 +277,4 @@ class OutputUtility:
 		plt.show()
 
 
-main()
+main() # Execute the program
