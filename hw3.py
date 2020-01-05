@@ -6,21 +6,34 @@ import collections
 import random
 import math
 
+import matplotlib.pyplot as plt
+import os
+
 DATA_FILE = "iris.data"
+OUTPUT_FOLDER = "kutay_decision_tree_plots"
 
 def main():
 	data = readData()
 	# 10 times with information gain formula
+	decision_trees_with_information_gain = []
 	for i in range(10):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithInformationGainFormula)
-		print(DecisionTreeEvaluator.computeErrorRate(decision_tree, test_data))
-	print("***")
+		decision_trees_with_information_gain.append(decision_tree)
+		#print(DecisionTreeEvaluator.computeErrorRate(decision_tree.root, test_data))
+		#print(decision_tree.training_loss_of_depths)
+		#print(decision_tree.validation_loss_of_depths)
 	# 10 times with information gini impurity formula
-	for i in range(10):
+	decision_trees_with_gini_impurity = []
+	for i in range(1):
 		training_data, validation_data, test_data = shuffleAndSplitToTrainingValidationTest(data)
 		decision_tree = DecisionTree(training_data, validation_data, EntropyCalculator.calculateEntropyWithGiniImpurityFormula)
-		print(DecisionTreeEvaluator.computeErrorRate(decision_tree, test_data))
+		decision_trees_with_gini_impurity.append(decision_tree)
+		#print(DecisionTreeEvaluator.computeErrorRate(decision_tree.root, test_data))
+		#plt.scatter(list(range(len(decision_tree.validation_loss_of_depths))), decision_tree.validation_loss_of_depths)
+		#plt.ylabel('Validation Loss with respect to depths')
+		#plt.show()
+	plotResults(decision_trees_with_information_gain, decision_trees_with_gini_impurity)
 
 def readData():
 	data = []
@@ -38,11 +51,24 @@ def shuffleAndSplitToTrainingValidationTest(data):
 	test_data = data[6*tenpercent_n : ]
 	return (training_data, validation_data, test_data)
 
+def plotResults(decision_trees_with_information_gain, decision_trees_with_gini_impurity):
+	os.mkdir(OUTPUT_FOLDER)
+	for i in range(len(decision_trees_with_information_gain)):
+		decision_tree = decision_trees_with_information_gain[i]
+		plt.plot(decision_tree.validation_loss_of_depths)
+		plt.title(f'Error percentages of iteration {i+1}')
+		plt.savefig(f'{OUTPUT_FOLDER}/plot{i}.png')
+
+
 class DecisionTree:
 	def __init__(self, training_data, validation_data, entropy_calculator_function):
 		self.training_data = training_data
 		self.validation_data = validation_data
 		self.entropy_calculator_function = entropy_calculator_function
+
+		self.training_loss_of_depths = []
+		self.validation_loss_of_depths = []
+
 		self.root = DecisionTreeNode(training_data[:])
 		self.buildTree()
 
@@ -51,6 +77,8 @@ class DecisionTree:
 		q = collections.deque()
 		q.append(self.root)
 		while q:
+			self.training_loss_of_depths.append(self.computeTrainingError())
+			self.validation_loss_of_depths.append(self.computeValidationError())
 			level_size = len(q)
 			for i in range(level_size):
 				node = q.popleft()
@@ -100,7 +128,10 @@ class DecisionTree:
 		return (len(left_data) * left_entropy + len(right_data) * right_entropy) / total_size
 
 	def computeValidationError(self):
-		return DecisionTreeEvaluator.computeErrorRate(self, self.validation_data)
+		return DecisionTreeEvaluator.computeErrorPercentage(self.root, self.validation_data)
+
+	def computeTrainingError(self):
+		return DecisionTreeEvaluator.computeErrorPercentage(self.root, self.training_data)
 
 
 class DecisionTreeNode:
@@ -127,18 +158,18 @@ class Datum:
 
 class DecisionTreeEvaluator:
 	@staticmethod
-	def computeErrorRate(decision_tree, data):
+	def computeErrorPercentage(decision_tree, data):
 		error_count = 0
 		for datum in data:
 			actual_result = datum.classs
 			predicted_result = DecisionTreeEvaluator.predictResult(decision_tree, datum.params)
 			if actual_result != predicted_result:
 				error_count += 1
-		return error_count / len(data)
+		return (error_count / len(data)) * 100
 
 	@staticmethod
-	def predictResult(decision_tree, params):
-		current_node = decision_tree.root
+	def predictResult(decision_tree_root, params):
+		current_node = decision_tree_root
 		# while it is not a leaf
 		while current_node.left is not None: # note that, if the left is null then right is also null and vice versa
 			if params[current_node.split_param_index] < current_node.split_param_value:
